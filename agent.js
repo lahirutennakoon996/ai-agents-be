@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import "dotenv/config";
 
+import { pool, tables } from "./config/db.config.js";
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // 1. Define your tools
@@ -38,6 +40,21 @@ const tools = [
       required: ["expression"],
     },
   },
+  {
+    name: "lookup_customer",
+    description:
+      "Look up a customer's account info and most recent order status by their customer ID.",
+    input_schema: {
+      type: "object",
+      properties: {
+        customer_id: {
+          type: "integer",
+          description: "The numeric customer ID",
+        },
+      },
+      required: ["customer_id"],
+    },
+  }
 ];
 
 // Real weather fetch using OpenWeatherMap
@@ -72,12 +89,33 @@ async function getWeather(city, units = "metric") {
   );
 }
 
+async function lookupCustomer(customerId) {
+  const result = await pool.query(
+    `SELECT name, email, plan, last_order_status
+     FROM ${tables.users}
+     WHERE id = $1`,
+    [customerId]
+  );
+
+  if (result.rows.length === 0) {
+    return `No customer found with ID ${customerId}.`;
+  }
+
+  const customer = result.rows[0];
+  return (
+    `Customer: ${customer.name} (${customer.email}) — ` +
+    `Plan: ${customer.plan} — ` +
+    `Last order status: ${customer.last_order_status}`
+  );
+}
+
 // Implement the tool logic
 async function executeTool(name, input) {
   if (name === "get_weather") {
     // Call weather API call
     return await getWeather(input.city, input.units);
   }
+
   if (name === "calculate") {
     try {
       return String(eval(input.expression));
@@ -85,6 +123,11 @@ async function executeTool(name, input) {
       return "Invalid expression";
     }
   }
+
+  if (name === "lookup_customer") {
+    return await lookupCustomer(input.customer_id);
+  }
+
   return "Unknown tool";
 }
 
