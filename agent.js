@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import "dotenv/config";
 
 import { pool, tables } from "./config/db.config.js";
+import {loadSession, saveSession} from "./src/session/session.service.js";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -132,9 +133,10 @@ async function executeTool(name, input) {
 }
 
 // Agentic loop
-export async function runAgent(userMessage) {
-  // The first message that gets sent to Claude by the user
-  const messages = [{ role: "user", content: userMessage }];
+export async function runAgent(userMessage, sessionId) {
+  // Load existing history (empty array on first message)
+  const messages = await loadSession(sessionId);
+  messages.push({ role: "user", content: userMessage }); // The first message that gets sent to Claude by the user
 
   let index=0;
 
@@ -154,6 +156,9 @@ export async function runAgent(userMessage) {
 
     // If Claude is done, return the text answer
     if (response.stop_reason === "end_turn") {
+      // Save updated history before returning
+      await saveSession(sessionId, messages);
+
       return response.content
         .filter((b) => b.type === "text")
         .map((b) => b.text)
