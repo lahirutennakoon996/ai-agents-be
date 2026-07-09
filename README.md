@@ -56,3 +56,19 @@ curl -X POST http://localhost:3000/api/agent \
 -H "Content-Type: application/json" \
 -d '{"message": "Look up customer 4521 and tell them the weather.", "sessionId": "abc-123"}' \
 Response: Agent uses DB + weather tools AND knows it's talking to Jack
+
+# Knowledge Base Search (RAG - retrieval augmented generation)
+### Should hit the knowledge base, not hallucinate
+curl -X POST http://localhost:3000/api/agent \
+-H "Content-Type: application/json" \
+-d '{"message": "How long do I have to request a refund?", "sessionId": "abc-123"}'
+
+### Multi-tool: Knowledge Base + customer lookup in one turn
+curl -X POST http://localhost:3000/api/agent \
+-H "Content-Type: application/json" \
+-d '{"message": "Look up customer 4521 and tell them our shipping times.", "sessionId": "abc-123"}'
+
+### Should gracefully return "no info found"
+curl -X POST http://localhost:3000/api/agent \
+-H "Content-Type: application/json" \
+-d '{"message": "What is our returns policy for digital products?", "sessionId": "abc-123"}'

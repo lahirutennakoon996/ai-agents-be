@@ -9,6 +9,7 @@ const pool = new pg.Pool({
 
 const tables = {
   users: 'users',
+  knowledgeChunks: 'knowledge_chunks',
 };
 
 export {

@@ -3,6 +3,7 @@ import "dotenv/config";
 
 import { pool, tables } from "./config/db.config.js";
 import {loadSession, saveSession} from "./src/session/session.service.js";
+import {searchKnowledgeBase} from "./src/knowledge-chunks/knowledge-chunks.service.js";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -55,6 +56,26 @@ const tools = [
       },
       required: ["customer_id"],
     },
+  },
+
+  // RAG (retrieval augmented generation) - connect a vector database (Pinecone, pgvector on AWS RDS, Postgres) to give
+  // your agent a knowledge base
+  {
+    name: "search_knowledge_base",
+    description:
+      "Search the internal knowledge base for information about company policies, products, shipping, refunds, " +
+      "and FAQs. Use this before answering any question about company-specific info.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "A short, specific search query. E.g. 'refund policy timeframe'",
+        },
+      },
+      required: ["query"],
+    },
   }
 ];
 
@@ -77,7 +98,7 @@ async function getWeather(city, units = "metric") {
 
   const data = await res.json();
 
-  console.log('openweathermap response', data);
+  // console.log('openweathermap response', data);
 
   const unitLabel = units === "imperial" ? "°F" : "°C";
 
@@ -127,6 +148,10 @@ async function executeTool(name, input) {
 
   if (name === "lookup_customer") {
     return await lookupCustomer(input.customer_id);
+  }
+
+  if (name === "search_knowledge_base") {
+    return await searchKnowledgeBase(input.query);
   }
 
   return "Unknown tool";
